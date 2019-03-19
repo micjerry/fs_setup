@@ -20,6 +20,7 @@ THP_FS_PKG="${FS_VERSION}.tar.gz"
 THP_SQLITE_PKG="sqlite-autoconf-3270100.tar.gz"
 THP_SPHINX_PKG="pocketsphinx-0.8.tar.gz"
 THP_SPBASE_PKG="sphinxbase-0.8.tar.gz"
+THP_MYSQLODBC_PKG="mysql-connector-odbc-8.0.15-linux-ubuntu18.04-x86-64bit.tar.gz"
 
 EXT_IP=
 LOCAL_IP=
@@ -74,6 +75,12 @@ install_deps_os() {
     
     cp /usr/include/lua5.3/*.h ${FS_INSTALL_PATH}/src/mod/languages/mod_lua/
     ln -sf /usr/lib/x86_64-linux-gnu/liblua5.3.so /usr/lib/x86_64-linux-gnu/liblua.so
+    
+    #install mysql odbc lib
+    tar -xzvf ${THP_PACKAGE_DIR}/${THP_MYSQLODBC_PKG} -C ${THP_INSTALL_PATH} > /dev/null 2>&1
+    local mysqllib_path=`echo ${THP_MYSQLODBC_PKG} | sed -e "s/.tar.gz//g"`
+    [ -d ${THP_INSTALL_PATH}/${mysqllib_path} ] || die "unzip mysql odbc lib failed" 
+    cp ${THP_INSTALL_PATH}/${mysqllib_path}/lib/libmyodbc8a.so /usr/lib/x86_64-linux-gnu/odbc/
 }
 
 install_db() {
@@ -114,10 +121,12 @@ install_fs() {
     sed -i 's_#\(asr\_tts/mod\_pocketsphinx\)_\1_' modules.conf
     sed -i 's_#\(asr\_tts/mod\_unimrcp\)_\1_' modules.conf
     sed -i 's_#\(asr\_tts/mod\_tts\_commandline\)_\1_' modules.conf
+    sed -i 's_#\(xml\_int/mod\_xml\_curl\)_\1_' modules.conf
     
     #disable modules
     sed -i 's_applications/mod\_enum_#&_' modules.conf
     sed -i 's_applications/mod\_signalwire_#&_' modules.conf
+    sed -i 's_xml\_int/mod\_xml\_cdr_#&_' modules.conf
     
     ./configure "--prefix=${INSTALL_DEST}" "--with-logfiledir=${INSTALL_LOG_DEST}" "--enable-core-odbc-support" "-C"
     [ "$?" != 0 ] && die "configure failed"
@@ -180,10 +189,18 @@ config_fs() {
     sed -i 's#<!-- *\(<load module="mod_tts_commandline"/>\) *-->#\1#' ${FS_CONFIG_PATH}/autoload_configs/modules.conf.xml
     sed -i '/mod_tts_commandline/a \ \ \ \ <load module="mod_unimrcp"/>' ${FS_CONFIG_PATH}/autoload_configs/modules.conf.xml
     
+    #set unload modules
+    sed -i 's#\(<load module="mod_enum"/>\)#<!--\1-->#'  ${FS_CONFIG_PATH}/autoload_configs/modules.conf.xml
+    sed -i 's#\(<load module="mod_signalwire"/>\)#<!--\1-->#'  ${FS_CONFIG_PATH}/autoload_configs/modules.conf.xml
+    sed -i 's#\(<load module="mod_rtmp"/>\)#<!--\1-->#'  ${FS_CONFIG_PATH}/autoload_configs/modules.conf.xml
+    
     #set switch config
     sed -i '/max-sessions/s/value="\(.*\)"/value="5000"/' ${FS_CONFIG_PATH}/autoload_configs/switch.conf.xml
     sed -i '/sessions-per-second/s/value="\(.*\)"/value="100"/' ${FS_CONFIG_PATH}/autoload_configs/switch.conf.xml  
     sed -i '/dsn:username:password/a \ \ \ \ <param name="core-db-dsn" value="odbc://freeswitch::"/>' ${FS_CONFIG_PATH}/autoload_configs/switch.conf.xml
+    sed -i 's#<!-- *\(<param name="auto-create-schemas" value="true"/>\) *-->#\1#' ${FS_CONFIG_PATH}/autoload_configs/switch.conf.xml
+    sed -i 's#<!-- *\(<param name="auto-clear-sql" value="true"/>\) *-->#\1#' ${FS_CONFIG_PATH}/autoload_configs/switch.conf.xml
+    sed -i '/core-dbtype/a \ \ \ \ <param name="core-dbtype" value="MYSQL"/>' ${FS_CONFIG_PATH}/autoload_configs/switch.conf.xml
     
     #sip profile
     sed -i 's#<!-- *\(<param name="rtcp-audio-interval-msec" value="5000"/>\) *-->#\1#' ${FS_CONFIG_PATH}/sip_profiles/internal.xml
@@ -195,6 +212,9 @@ config_fs() {
     sed -i '/apply-inbound-acl/a \ \ \ \ <param name="tcp-pingpong" value="20000"/>' ${FS_CONFIG_PATH}/sip_profiles/internal.xml
     sed -i '/rtp-timeout-sec/s/300/30/' ${FS_CONFIG_PATH}/sip_profiles/internal.xml
     
+    #use odbc
+    sed -i '/dsn:user:pass/a \ \ \ \ <param name="odbc-dsn" value="odbc://freeswitch::"/>' ${FS_CONFIG_PATH}/sip_profiles/internal.xml
+    
     sed -i '/rtp-ip/s/$${local_ip_v4}/$${local_ip}/' ${FS_CONFIG_PATH}/sip_profiles/internal.xml
     sed -i '/sip-ip/s/$${local_ip_v4}/$${local_ip}/' ${FS_CONFIG_PATH}/sip_profiles/internal.xml
     sed -i '/ext-rtp-ip/s/auto-nat/$${ext_ip}/' ${FS_CONFIG_PATH}/sip_profiles/internal.xml
@@ -205,6 +225,9 @@ config_fs() {
     sed -i '/sip-ip/s/$${local_ip_v4}/$${local_ip}/' ${FS_CONFIG_PATH}/sip_profiles/external.xml
     sed -i '/ext-rtp-ip/s/auto-nat/$${ext_ip}/' ${FS_CONFIG_PATH}/sip_profiles/external.xml
     sed -i '/ext-sip-ip/s/auto-nat/$${ext_ip}/' ${FS_CONFIG_PATH}/sip_profiles/external.xml
+    
+    #use odbc
+    sed -i '/enable-3pcc/a \ \ \ \ <param name="odbc-dsn" value="odbc://freeswitch::"/>' ${FS_CONFIG_PATH}/sip_profiles/external.xml
     
     #remove ipv6
     rm -f ${FS_CONFIG_PATH}/sip_profiles/*ipv6.xml

@@ -1,4 +1,9 @@
 download packages:
+
 freeswitch-1.8.5.tar.gz
+
 pocketsphinx-0.8.tar.gz
+
+mysql-connector-odbc-8.0.15-linux-ubuntu18.04-x86-64bit.tar.gz
+https://dev.mysql.com/downloads/connector/odbc/
 
