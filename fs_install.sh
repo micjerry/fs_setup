@@ -5,6 +5,8 @@ INSTALL_DEST="/opt/freeswitch"
 INSTALL_LOG_DEST="/var/log/freeswitch"
 FS_CONFIG_PATH="${INSTALL_DEST}/etc/freeswitch"
 
+RECORDING_PATH="/opt/fs_record"
+
 AKS_WDD="978243"
 
 TMP_INSTALL_ROOT="/opt/tmp_fs1.8"
@@ -47,6 +49,8 @@ env_prepare()
     mkdir -p ${TMP_INSTALL_ROOT}
     mkdir -p ${THP_INSTALL_PATH}
     mkdir -p ${MYSQL_DATAPATH}
+    
+    [ -d ${RECORDING_PATH} ] || mkdir -p ${RECORDING_PATH}
     
     [ -f ${THP_PACKAGE_DIR}/${THP_FS_PKG} ] || die "${THP_FS_PKG} not exist"
     tar -xzvf ${THP_PACKAGE_DIR}/${THP_FS_PKG} -C ${TMP_INSTALL_ROOT}
@@ -174,6 +178,8 @@ config_fs() {
     sed -i "/bind_server_ip=auto/a \ \ <X-PRE-PROCESS cmd=\"set\" data=\"local_ip=${LOCAL_IP}\"/>" ${FS_CONFIG_PATH}/vars.xml
     sed -i "/bind_server_ip=auto/a \ \ <X-PRE-PROCESS cmd=\"set\" data=\"ext_ip=${EXT_IP}\"/>" ${FS_CONFIG_PATH}/vars.xml
     
+    sed -i "/outbound_codec_prefs/a \ \ <X-PRE-PROCESS cmd=\"set\" data=\"recordings_dir=${RECORDING_PATH}\"/>" ${FS_CONFIG_PATH}/vars.xml
+    
     #config codecs
     sed -i 's#global_codec_prefs=\(.*\)"#global_codec_prefs=OPUS,H264,PCMU,PCMA,VP8"#' ${FS_CONFIG_PATH}/vars.xml
     sed -i 's#outbound_codec_prefs=\(.*\)"#outbound_codec_prefs=OPUS,H264,PCMU,PCMA,VP8"#' ${FS_CONFIG_PATH}/vars.xml
@@ -232,6 +238,11 @@ config_fs() {
     #remove ipv6
     rm -f ${FS_CONFIG_PATH}/sip_profiles/*ipv6.xml
     rm -rf ${FS_CONFIG_PATH}/sip_profiles/*ipv6
+    
+    #add asr diaplan
+    cp ${THP_CFG_PATH}/asr.xml ${FS_CONFIG_PATH}/dialplan/
+    sed -i '/context/s/default/asr/' ${FS_CONFIG_PATH}/sip_profiles/internal.xml
+    
 }
 
 config_verto() {
