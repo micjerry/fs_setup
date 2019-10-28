@@ -20,6 +20,8 @@ THP_SND_PATH=${CUR_PATH}/sounds
 THP_PACKAGE_DIR=${CUR_PATH}/pkgs
 THP_FS_PKG="${FS_VERSION}.tar.gz"
 THP_SQLITE_PKG="sqlite-autoconf-3270100.tar.gz"
+THP_CURL_PKG="curl-7.66.0.tar.gz"
+THP_SPEEX_PKG="speexdsp-SpeexDSP-1.2rc3.tar.gz"
 THP_SPHINX_PKG="pocketsphinx-0.8.tar.gz"
 THP_SPBASE_PKG="sphinxbase-0.8.tar.gz"
 THP_MYSQLODBC_PKG="mysql-connector-odbc-8.0.15-linux-ubuntu18.04-x86-64bit.tar.gz"
@@ -75,6 +77,8 @@ install_deps_os() {
     apt-get -y install mysql-server
     apt-get -y install nginx
     apt-get -y install dos2unix
+    apt-get -y install libpcre3 libpcre3-dev
+    apt-get -y install libssl-dev
     update-alternatives --set awk /usr/bin/gawk
     
     cp /usr/include/lua5.3/*.h ${FS_INSTALL_PATH}/src/mod/languages/mod_lua/
@@ -85,6 +89,38 @@ install_deps_os() {
     local mysqllib_path=`echo ${THP_MYSQLODBC_PKG} | sed -e "s/.tar.gz//g"`
     [ -d ${THP_INSTALL_PATH}/${mysqllib_path} ] || die "unzip mysql odbc lib failed" 
     cp ${THP_INSTALL_PATH}/${mysqllib_path}/lib/libmyodbc8a.so /usr/lib/x86_64-linux-gnu/odbc/
+}
+
+install_curl()
+{
+    apt-get -y remove libcurl3
+    local curl_path=`echo ${THP_CURL_PKG} | sed -e "s/.tar.gz//g"`
+    [ -f "${THP_PACKAGE_DIR}/${THP_CURL_PKG}" ] || die "${THP_CURL_PKG} not exist"
+    tar -xzvf ${THP_PACKAGE_DIR}/${THP_CURL_PKG} -C ${THP_INSTALL_PATH} > /dev/null 2>&1
+    [ -d ${THP_INSTALL_PATH}/${curl_path} ] || die "unpack ${THP_CURL_PKG} failed"
+    cd ${THP_INSTALL_PATH}/${curl_path} > /dev/null 2>&1
+    ./configure
+    make
+    make install
+    cd - > /dev/null 2>&1
+}
+
+install_speex()
+{
+    apt-get -y remove libspeex-dev
+    local speex_path=`echo ${THP_SPEEX_PKG} | sed -e "s/.tar.gz//g"`
+    [ -f "${THP_PACKAGE_DIR}/${THP_SPEEX_PKG}" ] || die "${THP_SPEEX_PKG} not exist"
+    tar -xzvf ${THP_PACKAGE_DIR}/${THP_SPEEX_PKG} -C ${THP_INSTALL_PATH} > /dev/null 2>&1
+    [ -d ${THP_INSTALL_PATH}/${speex_path} ] || die "unpack ${THP_SPEEX_PKG} failed"
+    cd ${THP_INSTALL_PATH}/${speex_path} > /dev/null 2>&1
+    ./autogen.sh
+    ./configure
+    make
+    make install
+    
+    rm -f /usr/local/lib/pkgconfig/speex.pc
+    [ -f /usr/local/lib/pkgconfig/speexdsp.pc ] && cp /usr/local/lib/pkgconfig/speexdsp.pc /usr/local/lib/pkgconfig/speex.pc
+    cd - > /dev/null 2>&1    
 }
 
 install_db() {
@@ -102,10 +138,12 @@ install_db() {
     systemctl start mysql.service
     /usr/bin/mysqladmin -u root password ${mysql_pass}
     echo "CREATE DATABASE freeswitch;" | mysql -uroot -p${mysql_pass} 
+    echo "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${mysql_pass}'" | mysql -uroot -p${mysql_pass}
+    echo "ALTER USER 'root'@'localhost' IDENTIFIED BY '${mysql_pass}';" | mysql -uroot -p${mysql_pass}
 }
 
 install_deps_sqlite() {
-    apt-get -y remove sqlite3
+    apt-get -y remove sqlite3:
     local sqlite_path=`echo ${THP_SQLITE_PKG} | sed -e "s/.tar.gz//g"`
     [ -f "${THP_PACKAGE_DIR}/${THP_SQLITE_PKG}" ] || die "${THP_SQLITE_PKG} not exist"
     tar -xzvf ${THP_PACKAGE_DIR}/${THP_SQLITE_PKG} -C ${THP_INSTALL_PATH} > /dev/null 2>&1
@@ -301,6 +339,9 @@ done
 
 env_prepare
 install_deps_os
+install_curl
+install_speex
+install_deps_sqlite
 install_db
 install_fs
 config_fs
