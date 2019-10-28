@@ -22,6 +22,7 @@ THP_FS_PKG="${FS_VERSION}.tar.gz"
 THP_SQLITE_PKG="sqlite-autoconf-3270100.tar.gz"
 THP_CURL_PKG="curl-7.66.0.tar.gz"
 THP_SPEEX_PKG="speexdsp-SpeexDSP-1.2rc3.tar.gz"
+THP_YASM_PKG="yasm-1.3.0.tar.gz"
 THP_SPHINX_PKG="pocketsphinx-0.8.tar.gz"
 THP_SPBASE_PKG="sphinxbase-0.8.tar.gz"
 THP_MYSQLODBC_PKG="mysql-connector-odbc-8.0.15-linux-ubuntu18.04-x86-64bit.tar.gz"
@@ -121,6 +122,19 @@ install_speex()
     rm -f /usr/local/lib/pkgconfig/speex.pc
     [ -f /usr/local/lib/pkgconfig/speexdsp.pc ] && cp /usr/local/lib/pkgconfig/speexdsp.pc /usr/local/lib/pkgconfig/speex.pc
     cd - > /dev/null 2>&1    
+}
+
+install_yasm()
+{
+    local yasm_path=`echo ${THP_YASM_PKG} | sed -e "s/.tar.gz//g"`
+    [ -f "${THP_PACKAGE_DIR}/${THP_YASM_PKG}" ] || die "${THP_YASM_PKG} not exist"
+    tar -xzvf ${THP_PACKAGE_DIR}/${THP_YASM_PKG} -C ${THP_INSTALL_PATH} > /dev/null 2>&1
+    [ -d ${THP_INSTALL_PATH}/${speex_path} ] || die "unpack ${THP_YASM_PKG} failed"
+    cd ${THP_INSTALL_PATH}/${yasm_path} > /dev/null 2>&1
+    ./configure
+    make
+    make install
+    cd - > /dev/null 2>&1 
 }
 
 install_db() {
@@ -341,6 +355,7 @@ env_prepare
 install_deps_os
 install_curl
 install_speex
+install_yasm
 install_deps_sqlite
 install_db
 install_fs
