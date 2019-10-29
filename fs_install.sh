@@ -21,7 +21,7 @@ THP_PACKAGE_DIR=${CUR_PATH}/pkgs
 THP_FS_PKG="${FS_VERSION}.tar.gz"
 THP_SQLITE_PKG="sqlite-autoconf-3270100.tar.gz"
 THP_CURL_PKG="curl-7.66.0.tar.gz"
-THP_SPEEX_PKG="speexdsp-SpeexDSP-1.2rc3.tar.gz"
+THP_SPEEX_PKG="speex-1.2.0.tar.gz"
 THP_YASM_PKG="yasm-1.3.0.tar.gz"
 THP_SPHINX_PKG="pocketsphinx-0.8.tar.gz"
 THP_SPBASE_PKG="sphinxbase-0.8.tar.gz"
@@ -69,6 +69,7 @@ install_deps_os() {
     apt-get -y install libedit-dev
     apt-get -y install libtiff-dev
     apt-get -y install libopus0 opus-tools
+    apt-get -y install libopus-dev
     apt-get -y install bison
     apt-get -y install gawk
     apt-get -y install libsndfile-dev
@@ -114,13 +115,10 @@ install_speex()
     tar -xzvf ${THP_PACKAGE_DIR}/${THP_SPEEX_PKG} -C ${THP_INSTALL_PATH} > /dev/null 2>&1
     [ -d ${THP_INSTALL_PATH}/${speex_path} ] || die "unpack ${THP_SPEEX_PKG} failed"
     cd ${THP_INSTALL_PATH}/${speex_path} > /dev/null 2>&1
-    ./autogen.sh
     ./configure
     make
     make install
     
-    rm -f /usr/local/lib/pkgconfig/speex.pc
-    [ -f /usr/local/lib/pkgconfig/speexdsp.pc ] && cp /usr/local/lib/pkgconfig/speexdsp.pc /usr/local/lib/pkgconfig/speex.pc
     cd - > /dev/null 2>&1    
 }
 
